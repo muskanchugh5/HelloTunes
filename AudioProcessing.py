@@ -78,7 +78,7 @@ pianoKeys={
 "c-7":2217.5,
 "d7":2349.3,
 "d-7":2489.0,
-"e7"0:2637.0, 
+"e7":2637.0, 
 "f7":2793.8, 
 "f-7":2960.0, 
 "g7":3136.0, 
@@ -88,32 +88,43 @@ pianoKeys={
 "b7":3951.1, 
 "c8":4186.0, 
 }
- 
-
-
-import tensorflow as tf
+ #import tensorflow as tf
 import numpy as np
 import pandas as pd
+import json
 
 from pyAudioAnalysis import audioBasicIO 
 from pyAudioAnalysis import audioFeatureExtraction 
-import matplotlib.pyplot as plt
+
 
 from pydub import AudioSegment
 from pydub.playback import play
 
-song = AudioSegment.from_file("raat.mp3")
-song.export("converted_audio5.wav", format="wav", bitrate="128k")
-[Fs,x]=audioBasicIO.readAudioFile('converted_audio5.wav') 
+from os.path import expanduser
+home=expanduser("~")
+song = AudioSegment.from_file(home+"/Music/song.mp3")
+song.export("converted_audio.wav", format="wav", bitrate="128k")
+
+[Fs,x]=audioBasicIO.readAudioFile('converted_audio.wav') 
 
 
+if( len( x.shape ) > 1 and  x.shape[1] == 2 ):
+    x = np.mean( x, axis = 1, keepdims = True )
+else:
+    x = x.reshape( x.shape[0], 1 )  
+
+l1=[]
+for i in range(x.shape[0]):
+    l1.append(x[i][0])
+
+arr=np.array(l1)
 freqList=[]
 min=13000
-keys=[]
+
 
 
 from scipy import signal
-f, t, Zxx = signal.stft(x, Fs,nperseg=Fs)
+f, t, Zxx = signal.stft(arr, Fs,nperseg=(2*Fs)/3)
 
 max=0
 prevMax=0
@@ -125,18 +136,29 @@ for j in range(t.shape[0]):
             max=Zxx[i][j]
             prevInd=index
             index=i
-    if max-prevMax<10:
-        freqList.append(list(f[index],f[prevInd]))
-    else:
-        freqList.append(f[index])
+    # if max-prevMax<10:
+    #     freqList.append(list(f[index],f[prevInd]))
+    # else:
+    freqList.append(f[index])
 
 
 
 
+keysList=[]
 for f in freqList:
+    min=13000
     for key in pianoKeys:
         diff=abs(pianoKeys[key]-f)
-        if(diff<min):
+        if(diff< min):
             min=diff
             keyNo=key
-    keys.append(keyNo)
+    keysList.append(keyNo)
+
+import json
+main_list=[]
+for i in keysList:
+    l=[]
+    l.append(i)
+    main_list.append(l)
+with open('main.js', 'w') as f: 
+        json.dump(main_list, f)
